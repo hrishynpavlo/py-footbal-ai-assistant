@@ -4,7 +4,7 @@ from .schemas import MatchCreate, MatchResponse, MatchList, MatchUpdate
 
 router = APIRouter(prefix="/matches", tags=["matches"])
 
-@router.post("/", response_model=MatchResponse)
+@router.post("/", response_model=MatchResponse, status_code=201)
 async def create_match_route(match_data: MatchCreate):
     return await create_match(match_data)
 

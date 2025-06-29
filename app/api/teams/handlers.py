@@ -1,11 +1,12 @@
 from fastapi import HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, delete
 from app.database import AsyncSessionLocal
 from app.logger import get_logger
 from app.models import Team
 from .schemas import TeamCreate, TeamResponse, TeamList
 from operator import attrgetter
+from typing import Any
 
 logger = get_logger(__name__)
 
@@ -118,4 +119,28 @@ async def get_team_by_id(team_id: int) -> TeamResponse:
             raise HTTPException(
                 status_code=500,    
                 detail="Internal server error while fetching team"
+            )
+
+
+async def delete_team(team_id: int):
+    async with AsyncSessionLocal() as session:
+        try:
+            result = await session.execute(delete(Team).where(Team.id == team_id))
+            await session.commit()
+
+            if result.rowcount == 0:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Team with id {team_id} not found"
+                )
+
+            return {"message": f"Team with id {team_id} deleted successfully"}
+        except HTTPException: 
+            raise
+        except Exception as e:
+            await session.rollback()
+            logger.error("Failed to delete team", error=str(e))
+            raise HTTPException(
+                status_code=500,
+                detail="Internal server error while deleting team"
             )
