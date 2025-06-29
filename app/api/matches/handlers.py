@@ -2,10 +2,10 @@ from fastapi import HTTPException
 from app.database import AsyncSessionLocal
 from app.logger import get_logger
 from app.models import Match
-from .schemas import MatchCreate, MatchTeam, MatchResponse, MatchList
+from .schemas import MatchCreate, MatchTeam, MatchResponse, MatchList, MatchUpdate
 from datetime import datetime
 from sqlalchemy.orm import joinedload
-from sqlalchemy import select, or_
+from sqlalchemy import select, or_, update
 from operator import attrgetter 
 
 logger = get_logger(__name__)
@@ -94,6 +94,7 @@ async def get_future_team_matches(team_id: int) -> MatchList:
                     Match.match_date >= datetime.now()
                 )
                 .limit(5)
+                .order_by(Match.match_date.asc())
                 .options(joinedload(Match.home_team), joinedload(Match.away_team))
             )
 
@@ -121,4 +122,59 @@ async def get_future_team_matches(team_id: int) -> MatchList:
             raise HTTPException(
                 status_code=500,
                 detail="Internal server error while fetching future team matches"
+            )
+
+async def update_match(match_id: int, match_data: MatchUpdate) -> MatchResponse:
+    async with AsyncSessionLocal() as session:
+        try:
+            existing_match = await session.execute(
+                select(Match).where(Match.id == match_id)
+            )
+            match = existing_match.scalar_one_or_none()
+            
+            if not match:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Match with id {match_id} not found"
+                )
+            
+            await session.execute(
+                update(Match)
+                .where(Match.id == match_id)
+                .values(**match_data.model_dump(exclude_unset=True))
+            )
+            await session.commit()
+            
+            result = await session.execute(
+                select(Match)
+                .where(Match.id == match_id)
+                .options(joinedload(Match.home_team), joinedload(Match.away_team))
+            )
+            updated_match = result.scalar_one_or_none()
+            
+            if not updated_match:
+                raise HTTPException(
+                    status_code=500,
+                    detail="Failed to retrieve updated match"
+                )
+
+            return MatchResponse(
+                id=attrgetter('id')(updated_match),   
+                home_team=MatchTeam(id=attrgetter('home_team_id')(updated_match), name=attrgetter('name')(updated_match.home_team)),
+                away_team=MatchTeam(id=attrgetter('away_team_id')(updated_match), name=attrgetter('name')(updated_match.away_team)),
+                match_date=attrgetter('match_date')(updated_match),
+                home_score=attrgetter('home_score')(updated_match),
+                away_score=attrgetter('away_score')(updated_match),
+                status=attrgetter('status')(updated_match),
+                created_at=attrgetter('created_at')(updated_match),
+                updated_at=attrgetter('updated_at')(updated_match)
+            )
+        except HTTPException:
+            raise
+        except Exception as e:
+            await session.rollback()
+            logger.error("Failed to update match", error=str(e))
+            raise HTTPException(
+                status_code=500,
+                detail="Internal server error while updating match"
             )

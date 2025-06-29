@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List
+from typing import List, Optional
 from datetime import datetime
 
 class MatchCreate(BaseModel):
@@ -25,3 +25,8 @@ class MatchResponse(BaseModel):
 class MatchList(BaseModel):
     matches: List[MatchResponse]
     total: int
+
+class MatchUpdate(BaseModel):
+    home_score: Optional[int] = None
+    away_score: Optional[int] = None
+    status: Optional[str] = None
