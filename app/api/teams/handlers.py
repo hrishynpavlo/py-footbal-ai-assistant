@@ -87,4 +87,34 @@ async def create_team(team_data: TeamCreate) -> TeamResponse:
             raise HTTPException(
                 status_code=500, 
                 detail="Internal server error while creating team"
-            ) 
+            )
+
+
+async def get_team_by_id(team_id: int) -> TeamResponse:
+    async with AsyncSessionLocal() as session:
+        try:
+            result = await session.execute(select(Team).where(Team.id == team_id))
+            team = result.scalar_one_or_none()
+            
+            if not team:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Team with id {team_id} not found"
+                )
+            
+            return TeamResponse(
+                id=team.id,
+                name=team.name,
+                country=team.country,
+                created_at=team.created_at,
+                updated_at=team.updated_at
+            )
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error("Failed to get team by id", error=str(e))
+            raise HTTPException(
+                status_code=500,    
+                detail="Internal server error while fetching team"
+            )
