@@ -2,11 +2,11 @@ from fastapi import HTTPException
 from app.database import AsyncSessionLocal
 from app.logger import get_logger
 from app.models import Match
-from .schemas import MatchCreate, MatchTeam, MatchResponse
+from .schemas import MatchCreate, MatchTeam, MatchResponse, MatchList
 from datetime import datetime
 from sqlalchemy.orm import joinedload
-from sqlalchemy import select
-from operator import attrgetter
+from sqlalchemy import select, or_
+from operator import attrgetter 
 
 logger = get_logger(__name__)
 
@@ -77,4 +77,48 @@ async def get_match_by_id(match_id: int) -> MatchResponse:
             raise HTTPException(
                 status_code=500,
                 detail="Internal server error while fetching match"
+            )
+
+
+async def get_future_team_matches(team_id: int) -> MatchList:
+    async with AsyncSessionLocal() as session:
+        try:
+            result = await session.execute(
+                select(Match)
+                .where(
+                    or_(
+                        Match.home_team_id == team_id, 
+                        Match.away_team_id == team_id
+                    ),
+                    Match.status == "scheduled",
+                    Match.match_date >= datetime.now()
+                )
+                .limit(5)
+                .options(joinedload(Match.home_team), joinedload(Match.away_team))
+            )
+
+            matches = result.scalars().all()
+
+            match_responses = [
+                MatchResponse(
+                    id=attrgetter('id')(match),
+                    home_team=MatchTeam(id=attrgetter('home_team_id')(match), name=attrgetter('name')(match.home_team)),
+                    away_team=MatchTeam(id=attrgetter('away_team_id')(match), name=attrgetter('name')(match.away_team)),
+                    match_date=attrgetter('match_date')(match),
+                    home_score=attrgetter('home_score')(match),
+                    away_score=attrgetter('away_score')(match),
+                    status=attrgetter('status')(match),
+                    created_at=attrgetter('created_at')(match),
+                    updated_at=attrgetter('updated_at')(match)
+                )
+                for match in matches
+            ]
+
+            return MatchList(matches=match_responses, total=len(matches))
+        except Exception as e:
+            await session.rollback()
+            logger.error("Failed to get future team matches", error=str(e))
+            raise HTTPException(
+                status_code=500,
+                detail="Internal server error while fetching future team matches"
             )
