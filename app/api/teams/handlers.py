@@ -5,6 +5,7 @@ from app.database import AsyncSessionLocal
 from app.logger import get_logger
 from app.models import Team
 from .schemas import TeamCreate, TeamResponse, TeamList
+from operator import attrgetter
 
 logger = get_logger(__name__)
 
@@ -35,16 +36,16 @@ async def get_teams(
             
             team_responses = [
                 TeamResponse(
-                    id=team.id,
-                    name=team.name,
-                    country=team.country,
-                    created_at=team.created_at,
-                    updated_at=team.updated_at
+                    id=attrgetter('id')(team),
+                    name=attrgetter('name')(team),
+                    country=attrgetter('country')(team),
+                    created_at=attrgetter('created_at')(team),
+                    updated_at=attrgetter('updated_at')(team)
                 )
                 for team in teams
             ]
             
-            return TeamList(teams=team_responses, total=total_count)
+            return TeamList(teams=team_responses, total=total_count or 0)
             
         except Exception as e:
             logger.error("Failed to get teams", error=str(e))
@@ -72,11 +73,11 @@ async def create_team(team_data: TeamCreate) -> TeamResponse:
             await session.refresh(new_team)
             
             return TeamResponse(
-                id=new_team.id,
-                name=new_team.name,
-                country=new_team.country,
-                created_at=new_team.created_at,
-                updated_at=new_team.updated_at
+                id=attrgetter('id')(new_team),
+                name=attrgetter('name')(new_team),
+                country=attrgetter('country')(new_team),
+                created_at=attrgetter('created_at')(new_team),
+                updated_at=attrgetter('updated_at')(new_team)
             )
             
         except HTTPException:
@@ -103,11 +104,11 @@ async def get_team_by_id(team_id: int) -> TeamResponse:
                 )
             
             return TeamResponse(
-                id=team.id,
-                name=team.name,
-                country=team.country,
-                created_at=team.created_at,
-                updated_at=team.updated_at
+                id=attrgetter('id')(team),
+                name=attrgetter('name')(team),
+                country=attrgetter('country')(team),
+                created_at=attrgetter('created_at')(team),
+                updated_at=attrgetter('updated_at')(team)
             )
             
         except HTTPException:

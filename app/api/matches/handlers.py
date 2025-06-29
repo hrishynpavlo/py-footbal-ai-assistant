@@ -6,6 +6,7 @@ from .schemas import MatchCreate, MatchTeam, MatchResponse
 from datetime import datetime
 from sqlalchemy.orm import joinedload
 from sqlalchemy import select
+from operator import attrgetter
 
 logger = get_logger(__name__)
 
@@ -28,15 +29,15 @@ async def create_match(match_data: MatchCreate) -> MatchResponse:
             await session.refresh(new_match, ["home_team", "away_team"])
             
             return MatchResponse(
-                id=new_match.id,
-                home_team=MatchTeam(id=new_match.home_team_id, name=new_match.home_team.name),
-                away_team=MatchTeam(id=new_match.away_team_id, name=new_match.away_team.name),
-                match_date=new_match.match_date,
-                home_score=new_match.home_score,
-                away_score=new_match.away_score,
-                status=new_match.status,
-                created_at=new_match.created_at,
-                updated_at=new_match.updated_at
+                id= attrgetter('id')(new_match),
+                home_team=MatchTeam(id=attrgetter('home_team_id')(new_match), name=attrgetter('name')(new_match.home_team)),
+                away_team=MatchTeam(id=attrgetter('away_team_id')(new_match), name=attrgetter('name')(new_match.away_team)),
+                match_date=attrgetter('match_date')(new_match),
+                home_score=attrgetter('home_score')(new_match),
+                away_score=attrgetter('away_score')(new_match),
+                status=attrgetter('status')(new_match),
+                created_at=attrgetter('created_at')(new_match),
+                updated_at=attrgetter('updated_at')(new_match)
             )
         except Exception as e:
             await session.rollback()
@@ -60,15 +61,15 @@ async def get_match_by_id(match_id: int) -> MatchResponse:
                 )
 
             return MatchResponse(
-                id=match.id,
-                home_team=MatchTeam(id=match.home_team_id, name=match.home_team.name),
-                away_team=MatchTeam(id=match.away_team_id, name=match.away_team.name),
-                match_date=match.match_date,
-                home_score=match.home_score,
-                away_score=match.away_score,
-                status=match.status,
-                created_at=match.created_at,
-                updated_at=match.updated_at
+                id=attrgetter('id')(match),
+                home_team=MatchTeam(id=attrgetter('home_team_id')(match), name=attrgetter('name')(match.home_team)),
+                away_team=MatchTeam(id=attrgetter('away_team_id')(match), name=attrgetter('name')(match.away_team)),
+                match_date=attrgetter('match_date')(match),
+                home_score=attrgetter('home_score')(match),
+                away_score=attrgetter('away_score')(match),
+                status=attrgetter('status')(match),
+                created_at=attrgetter('created_at')(match),
+                updated_at=attrgetter('updated_at')(match)
             )
         except Exception as e:
             await session.rollback()
