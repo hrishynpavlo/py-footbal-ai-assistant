@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import time
 from app.logger import get_logger
 from app.database import init_database, close_database
+from app.api.teams.routes import router as teams_router
 
 logger = get_logger(__name__)
 
@@ -81,6 +82,9 @@ async def status():
         "version": "1.0.0",
         "timestamp": time.time()
     }
+
+
+app.include_router(teams_router)
 
 
 @app.on_event("startup")
