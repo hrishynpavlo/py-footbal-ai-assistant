@@ -12,11 +12,36 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U football_user -d football_ai"]
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - football_network
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: football_ai_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@football-ai.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "8080:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - football_network
 
 volumes:
-  postgres_data: 
+  postgres_data:
+  pgadmin_data:
+
+networks:
+  football_network:
+    driver: bridge 
